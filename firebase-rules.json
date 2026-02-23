@@ -1,0 +1,19 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid",
+        "profile": {
+          ".validate": "hasChildren(['name', 'email'])"
+        },
+        "gameStats": {
+          ".validate": "hasChildren(['level', 'experience', 'coins', 'gamesPlayed'])"
+        },
+        "settings": {
+          ".validate": "hasChildren(['sound', 'music'])"
+        }
+      }
+    }
+  }
+}
