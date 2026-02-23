@@ -42,15 +42,6 @@
             <div class="error-message" id="registerConfirmError"></div>
           </div>
 
-          <div class="form-group">
-            <label>Аватарка</label>
-            <div class="avatar-upload">
-              <div class="avatar-preview" id="avatarPreview">🎮</div>
-              <input type="file" id="avatarInput" accept="image/*">
-              <button type="button" class="avatar-upload-btn" onclick="document.getElementById('avatarInput').click()">📷</button>
-            </div>
-          </div>
-
           <button type="submit" class="btn btn-primary" id="registerBtn">Зарегистрироваться</button>
         </form>
 
@@ -121,9 +112,6 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getDatabase(app);
-
-    // Глобальная переменная для аватарки
-    let avatarDataUrl = null;
 
     // Проверка состояния аутентификации
     onAuthStateChanged(auth, (user) => {
@@ -210,26 +198,14 @@
     // Проверка ника на уникальность
     async function isNicknameUnique(nickname) {
       try {
+        // Используем toLowerCase() для поиска, чтобы соответствовать формату хранения
         const snapshot = await get(query(ref(db, 'users'), orderByChild('profile/nickname'), equalTo(nickname.toLowerCase())));
         return !snapshot.exists();
       } catch (error) {
         console.error('Ошибка проверки ника:', error);
-        return false;
+        return false; // При ошибке считаем, что ник занят (для безопасности)
       }
     }
-
-    // Загрузка аватарки
-    document.getElementById('avatarInput').addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = function(event) {
-          avatarDataUrl = event.target.result;
-          document.getElementById('avatarPreview').innerHTML = `<img src="${avatarDataUrl}" alt="Avatar">`;
-        };
-        reader.readAsDataURL(file);
-      }
-    });
 
     // Проверка ника при вводе
     let nicknameTimeout;
@@ -331,7 +307,6 @@
             displayName: name,
             email: email,
             playerId: playerId,
-            avatar: avatarDataUrl || null,
             registeredAt: serverTimestamp(),
             lastLogin: serverTimestamp()
           },
