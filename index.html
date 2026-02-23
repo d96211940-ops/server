@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Игра - Регистрация и Вход</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="auth-box">
+      <h1>🎮 Игра</h1>
+      <p class="subtitle">Добро пожаловать в игровой мир</p>
+
+      <div id="alert" class="alert"></div>
+
+      <!-- Форма регистрации -->
+      <div id="registerForm" class="form-container active">
+        <form id="register">
+          <div class="form-group">
+            <label for="registerName">Имя пользователя</label>
+            <input type="text" id="registerName" placeholder="Введите имя (4-10 символов)" minlength="4" maxlength="10" required>
+            <div class="error-message" id="registerNameError"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="registerEmail">Email</label>
+            <input type="email" id="registerEmail" placeholder="Введите email" required>
+            <div class="error-message" id="registerEmailError"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="registerPassword">Пароль</label>
+            <input type="password" id="registerPassword" placeholder="Минимум 6 символов" minlength="6" required>
+            <div class="error-message" id="registerPasswordError"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="registerConfirmPassword">Подтвердите пароль</label>
+            <input type="password" id="registerConfirmPassword" placeholder="Повторите пароль" required>
+            <div class="error-message" id="registerConfirmError"></div>
+          </div>
+
+          <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
+        </form>
+
+        <p class="toggle-text">
+          Уже есть аккаунт? <a onclick="showLogin()">Войти</a>
+        </p>
+      </div>
+
+      <!-- Форма входа -->
+      <div id="loginForm" class="form-container">
+        <form id="login">
+          <div class="form-group">
+            <label for="loginEmail">Email</label>
+            <input type="email" id="loginEmail" placeholder="Введите email" required>
+            <div class="error-message" id="loginEmailError"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="loginPassword">Пароль</label>
+            <input type="password" id="loginPassword" placeholder="Введите пароль" required>
+            <div class="error-message" id="loginPasswordError"></div>
+          </div>
+
+          <button type="submit" class="btn btn-primary">Войти</button>
+        </form>
+
+        <p class="toggle-text">
+          Нет аккаунта? <a onclick="showRegister()">Зарегистрироваться</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { 
+      getAuth, 
+      createUserWithEmailAndPassword, 
+      signInWithEmailAndPassword,
+      updateProfile,
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { 
+      getDatabase, 
+      ref, 
+      set, 
+      get,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    // Конфигурация Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyCTlre_qCkP2fb7ktutahls84h_FwDcKUs",
+      authDomain: "igra-sait.firebaseapp.com",
+      projectId: "igra-sait",
+      storageBucket: "igra-sait.firebasestorage.app",
+      messagingSenderId: "693199535341",
+      appId: "1:693199535341:web:e126bf76cbb214776e20e4",
+      measurementId: "G-X469ETJYEE"
+    };
+
+    // Инициализация Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+
+    // Проверка состояния аутентификации
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // Пользователь уже вошел - перенаправляем на server.html
+        window.location.href = 'server.html';
+      }
+    });
+
+    // Переключение между формами
+    window.showLogin = function() {
+      document.getElementById('registerForm').classList.remove('active');
+      document.getElementById('loginForm').classList.add('active');
+      hideAlert();
+      clearErrors();
+    };
+
+    window.showRegister = function() {
+      document.getElementById('loginForm').classList.remove('active');
+      document.getElementById('registerForm').classList.add('active');
+      hideAlert();
+      clearErrors();
+    };
+
+    // Показать сообщение
+    function showAlert(message, type) {
+      const alert = document.getElementById('alert');
+      alert.textContent = message;
+      alert.className = 'alert show ' + (type === 'success' ? 'alert-success' : 'alert-error');
+    }
+
+    function hideAlert() {
+      const alert = document.getElementById('alert');
+      alert.className = 'alert';
+    }
+
+    // Очистка ошибок
+    function clearErrors() {
+      document.querySelectorAll('.error-message').forEach(el => {
+        el.textContent = '';
+        el.classList.remove('show');
+      });
+      document.querySelectorAll('input').forEach(el => {
+        el.classList.remove('error', 'success');
+      });
+    }
+
+    // Показать ошибку в поле
+    function showFieldError(fieldId, messageId, message) {
+      const field = document.getElementById(fieldId);
+      const errorEl = document.getElementById(messageId);
+      field.classList.add('error');
+      errorEl.textContent = message;
+      errorEl.classList.add('show');
+    }
+
+    // Валидация имени
+    function validateName(name) {
+      if (!name || name.trim() === '') {
+        return 'Имя не может быть пустым';
+      }
+      if (name.length < 4 || name.length > 10) {
+        return 'Имя должно быть от 4 до 10 символов';
+      }
+      return null;
+    }
+
+    // Валидация пароля
+    function validatePassword(password) {
+      if (!password || password.length < 6) {
+        return 'Пароль должен быть минимум 6 символов';
+      }
+      return null;
+    }
+
+    // Регистрация
+    document.getElementById('register').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearErrors();
+      hideAlert();
+
+      const name = document.getElementById('registerName').value.trim();
+      const email = document.getElementById('registerEmail').value.trim();
+      const password = document.getElementById('registerPassword').value;
+      const confirmPassword = document.getElementById('registerConfirmPassword').value;
+
+      let hasError = false;
+
+      // Валидация имени
+      const nameError = validateName(name);
+      if (nameError) {
+        showFieldError('registerName', 'registerNameError', nameError);
+        hasError = true;
+      }
+
+      // Валидация email
+      if (!email || !email.includes('@')) {
+        showFieldError('registerEmail', 'registerEmailError', 'Введите корректный email');
+        hasError = true;
+      }
+
+      // Валидация пароля
+      const passwordError = validatePassword(password);
+      if (passwordError) {
+        showFieldError('registerPassword', 'registerPasswordError', passwordError);
+        hasError = true;
+      }
+
+      // Проверка совпадения паролей
+      if (password !== confirmPassword) {
+        showFieldError('registerConfirmPassword', 'registerConfirmError', 'Пароли не совпадают');
+        hasError = true;
+      }
+
+      if (hasError) return;
+
+      try {
+        // Создание пользователя в Firebase Auth
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // Обновление профиля с именем
+        await updateProfile(user, {
+          displayName: name
+        });
+
+        // Создание записи в Realtime Database
+        await set(ref(db, 'users/' + user.uid), {
+          profile: {
+            name: name,
+            email: email,
+            registeredAt: serverTimestamp(),
+            lastLogin: serverTimestamp()
+          },
+          gameStats: {
+            level: 1,
+            experience: 0,
+            coins: 100,
+            gamesPlayed: 0
+          },
+          settings: {
+            sound: true,
+            music: true
+          }
+        });
+
+        showAlert('Регистрация успешна! Перенаправление...', 'success');
+        
+        // Перенаправление на server.html
+        setTimeout(() => {
+          window.location.href = 'server.html';
+        }, 1500);
+
+      } catch (error) {
+        console.error('Ошибка регистрации:', error);
+        let errorMessage = 'Ошибка регистрации';
+        
+        switch (error.code) {
+          case 'auth/email-already-in-use':
+            errorMessage = 'Email уже зарегистрирован';
+            break;
+          case 'auth/invalid-email':
+            errorMessage = 'Некорректный email';
+            break;
+          case 'auth/weak-password':
+            errorMessage = 'Пароль слишком слабый';
+            break;
+          default:
+            errorMessage = error.message;
+        }
+        
+        showAlert(errorMessage, 'error');
+      }
+    });
+
+    // Вход
+    document.getElementById('login').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearErrors();
+      hideAlert();
+
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+
+      let hasError = false;
+
+      // Валидация email
+      if (!email || !email.includes('@')) {
+        showFieldError('loginEmail', 'loginEmailError', 'Введите корректный email');
+        hasError = true;
+      }
+
+      // Валидация пароля
+      if (!password || password.length < 6) {
+        showFieldError('loginPassword', 'loginPasswordError', 'Введите пароль');
+        hasError = true;
+      }
+
+      if (hasError) return;
+
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // Обновление lastLogin в базе данных
+        await set(ref(db, 'users/' + user.uid + '/profile/lastLogin'), serverTimestamp());
+
+        showAlert('Вход успешен! Перенаправление...', 'success');
+        
+        setTimeout(() => {
+          window.location.href = 'server.html';
+        }, 1500);
+
+      } catch (error) {
+        console.error('Ошибка входа:', error);
+        let errorMessage = 'Ошибка входа';
+        
+        switch (error.code) {
+          case 'auth/user-not-found':
+            errorMessage = 'Пользователь не найден';
+            break;
+          case 'auth/wrong-password':
+            errorMessage = 'Неверный пароль';
+            break;
+          case 'auth/invalid-email':
+            errorMessage = 'Некорректный email';
+            break;
+          default:
+            errorMessage = error.message;
+        }
+        
+        showAlert(errorMessage, 'error');
+      }
+    });
+  </script>
+</body>
+</html>

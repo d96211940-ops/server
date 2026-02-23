@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Профиль</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Навигация -->
+  <nav class="nav-header">
+    <div class="nav-left">
+      <a href="server.html" class="nav-btn nav-btn-profile">🏠 Назад</a>
+    </div>
+    <div class="nav-right">
+      <button class="nav-btn nav-btn-logout" onclick="logout()">🚪 Выход</button>
+    </div>
+  </nav>
+
+  <div class="page-container">
+    <h1 class="page-title">👤 Мой Профиль</h1>
+
+    <div class="profile-container">
+      <div class="profile-header">
+        <div class="profile-avatar">🎮</div>
+        <h2 class="profile-name" id="profileName">Загрузка...</h2>
+        <p class="profile-email" id="profileEmail">...</p>
+      </div>
+
+      <div class="profile-stats">
+        <div class="profile-stat-item">
+          <div class="profile-stat-value" id="statLevel">1</div>
+          <div class="profile-stat-label">Уровень</div>
+        </div>
+        <div class="profile-stat-item">
+          <div class="profile-stat-value" id="statCoins">100</div>
+          <div class="profile-stat-label">Монеты</div>
+        </div>
+        <div class="profile-stat-item">
+          <div class="profile-stat-value" id="statExp">0</div>
+          <div class="profile-stat-label">Опыт</div>
+        </div>
+        <div class="profile-stat-item">
+          <div class="profile-stat-value" id="statGames">0</div>
+          <div class="profile-stat-label">Игр сыграно</div>
+        </div>
+      </div>
+
+      <div class="profile-section">
+        <h3 class="profile-section-title">🎒 Инвентарь</h3>
+        <div class="profile-inventory" id="inventory">
+          <!-- Предметы будут загружены из Firebase -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { 
+      getAuth, 
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { 
+      getDatabase, 
+      ref, 
+      get,
+      set
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCTlre_qCkP2fb7ktutahls84h_FwDcKUs",
+      authDomain: "igra-sait.firebaseapp.com",
+      projectId: "igra-sait",
+      storageBucket: "igra-sait.firebasestorage.app",
+      messagingSenderId: "693199535341",
+      appId: "1:693199535341:web:e126bf76cbb214776e20e4",
+      measurementId: "G-X469ETJYEE"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = 'index.html';
+        return;
+      }
+
+      try {
+        const snapshot = await get(ref(db, 'users/' + user.uid));
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          
+          document.getElementById('profileName').textContent = data.profile.name;
+          document.getElementById('profileEmail').textContent = data.profile.email;
+          document.getElementById('statLevel').textContent = data.gameStats.level;
+          document.getElementById('statCoins').textContent = data.gameStats.coins;
+          document.getElementById('statExp').textContent = data.gameStats.experience;
+          document.getElementById('statGames').textContent = data.gameStats.gamesPlayed;
+
+          // Загрузка инвентаря
+          const inventory = data.inventory || {};
+          const inventoryEl = document.getElementById('inventory');
+          
+          if (Object.keys(inventory).length === 0) {
+            inventoryEl.innerHTML = '<p style="color: #666; text-align: center; grid-column: 1/-1;">Инвентарь пуст</p>';
+          } else {
+            inventoryEl.innerHTML = '';
+            for (const [itemId, itemData] of Object.entries(inventory)) {
+              const itemEl = document.createElement('div');
+              itemEl.className = 'inventory-item' + (itemData.equipped ? ' equipped' : '');
+              itemEl.textContent = itemData.icon || '📦';
+              itemEl.title = itemData.name || itemId;
+              inventoryEl.appendChild(itemEl);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки данных:', error);
+      }
+    });
+
+    window.logout = async function() {
+      try {
+        await signOut(auth);
+        window.location.href = 'index.html';
+      } catch (error) {
+        console.error('Ошибка выхода:', error);
+      }
+    };
+  </script>
+</body>
+</html>
